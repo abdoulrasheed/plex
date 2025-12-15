@@ -1,0 +1,12 @@
+/target
+.plex/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+.DS_Store
+
+# VS Code extension
+vscode-plex/node_modules/
+vscode-plex/out/
+vscode-plex/*.vsix
