@@ -1,0 +1,145 @@
+{
+  "name": "vscode-plex",
+  "displayName": "Plex — Code Intelligence",
+  "description": "Local-first code intelligence: semantic search, call graphs, symbol explorer. Powered by Plex.",
+  "version": "0.1.0",
+  "publisher": "plex",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages", "Other"],
+  "activationEvents": [
+    "workspaceContains:**/*.py",
+    "workspaceContains:**/*.ts",
+    "workspaceContains:**/*.js",
+    "workspaceContains:**/*.rs",
+    "workspaceContains:**/*.go",
+    "workspaceContains:**/*.java",
+    "workspaceContains:**/*.c",
+    "workspaceContains:**/*.h",
+    "workspaceContains:**/*.cpp",
+    "workspaceContains:**/*.cc"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "plex.index",
+        "title": "Plex: Index Project",
+        "icon": "$(database)"
+      },
+      {
+        "command": "plex.search",
+        "title": "Plex: Search Codebase",
+        "icon": "$(search)"
+      },
+      {
+        "command": "plex.callGraph",
+        "title": "Plex: Show Call Graph",
+        "icon": "$(type-hierarchy)"
+      },
+      {
+        "command": "plex.stats",
+        "title": "Plex: Show Index Stats"
+      },
+      {
+        "command": "plex.symbolInfo",
+        "title": "Plex: Symbol Info"
+      },
+      {
+        "command": "plex.dashboard",
+        "title": "Plex: Open Dashboard",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "plex.setupMcp",
+        "title": "Plex: Setup MCP for AI Agents"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "plex-explorer",
+          "title": "Plex",
+          "icon": "$(symbol-class)"
+        }
+      ]
+    },
+    "views": {
+      "plex-explorer": [
+        {
+          "id": "plex.symbolTree",
+          "name": "Symbols",
+          "type": "tree"
+        },
+        {
+          "id": "plex.searchResults",
+          "name": "Search Results",
+          "type": "tree"
+        },
+        {
+          "id": "plex.callGraphView",
+          "name": "Call Graph",
+          "type": "tree"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Plex",
+      "properties": {
+        "plex.binaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the plex binary. Leave empty to search PATH."
+        },
+        "plex.autoIndex": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically re-index on file save."
+        },
+        "plex.embeddings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate embeddings during indexing (enables semantic search)."
+        }
+      }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "plex.callGraph",
+          "group": "plex",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "plex.symbolInfo",
+          "group": "plex",
+          "when": "editorHasSelection"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "plex.search",
+        "key": "ctrl+shift+f5",
+        "mac": "cmd+shift+f5"
+      },
+      {
+        "command": "plex.dashboard",
+        "key": "ctrl+shift+f6",
+        "mac": "cmd+shift+f6"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0"
+  }
+}
