@@ -1,17 +1,12 @@
 use anyhow::Result;
 use std::path::{Path, PathBuf};
 
-/// Global configuration derived from CLI arguments.
 pub struct Config {
-    /// Absolute path to the project root being analyzed.
     pub project_root: PathBuf,
-    /// Directory where Plex stores its index and data (.plex/).
     pub data_dir: PathBuf,
 }
 
 impl Config {
-    /// Create a new config rooted at `project_path`.
-    /// Creates the `.plex/` data directory if it doesn't exist.
     pub fn new(project_path: PathBuf) -> Result<Self> {
         let project_root = if project_path.is_absolute() {
             project_path
@@ -28,12 +23,10 @@ impl Config {
         })
     }
 
-    /// Path to the SQLite database file.
     pub fn db_path(&self) -> PathBuf {
         self.data_dir.join("index.db")
     }
 
-    /// Global directory for cached models (~/.local/share/plex/models/).
     pub fn models_dir() -> PathBuf {
         let base = dirs::data_local_dir().unwrap_or_else(|| PathBuf::from("."));
         let dir = base.join("plex").join("models");
@@ -41,7 +34,6 @@ impl Config {
         dir
     }
 
-    /// Return the project name (last component of the root path).
     pub fn project_name(&self) -> &str {
         self.project_root
             .file_name()
@@ -49,7 +41,6 @@ impl Config {
             .unwrap_or("project")
     }
 
-    /// Check whether a path should be ignored (hidden dirs, node_modules, etc.).
     pub fn should_ignore(path: &Path) -> bool {
         let name = path
             .file_name()
@@ -80,3 +71,4 @@ impl Config {
         )
     }
 }
+

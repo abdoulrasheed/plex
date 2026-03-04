@@ -7,13 +7,10 @@ use crate::mcp::tools;
 use crate::search::Searcher;
 use crate::store::Store;
 
-/// Run the MCP server over stdio (JSON-RPC 2.0, newline-delimited).
-/// This is the transport that Cursor, Claude Desktop, etc. use.
 pub fn run_stdio(config: &Config) -> Result<()> {
     let store = Store::open(&config.db_path())?;
     let searcher = Searcher::from_store(store)?;
 
-    // Re-open store for graph queries (separate connection)
     let graph_store = Store::open(&config.db_path())?;
 
     let mut server = McpServer {
@@ -82,7 +79,6 @@ impl McpServer {
             "initialize" => self.handle_initialize(&id, &params),
             "notifications/initialized" => {
                 self.initialized = true;
-                // Notification — no response needed, but we return empty
                 json!({
                     "jsonrpc": "2.0",
                     "id": id,
@@ -174,3 +170,4 @@ impl McpServer {
         }
     }
 }
+

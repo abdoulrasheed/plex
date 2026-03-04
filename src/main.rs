@@ -6,10 +6,12 @@ use std::path::PathBuf;
 #[command(name = "plex")]
 #[command(version)]
 #[command(about = "⚡ Blazingly fast local code intelligence – index, search, visualize, MCP")]
-#[command(long_about = "Plex indexes your codebase into a queryable knowledge base.\n\
+#[command(
+    long_about = "Plex indexes your codebase into a queryable knowledge base.\n\
     Use it standalone via CLI, as an MCP server for AI assistants (Cursor, Claude, etc.),\n\
     or through its interactive visualizations.\n\n\
-    Everything runs locally. No API keys. No data leaves your machine.")]
+    Everything runs locally. No API keys. No data leaves your machine."
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -17,92 +19,64 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Index a project directory (parse, extract symbols, generate embeddings)
     Index {
-        /// Path to the project directory
         #[arg(default_value = ".")]
         path: PathBuf,
 
-        /// Skip embedding generation (faster, text search only)
         #[arg(long)]
         no_embed: bool,
     },
 
-    /// Start the MCP server over stdio (for Cursor, Claude Desktop, etc.)
     Mcp {
-        /// Path to the project directory
         #[arg(default_value = ".")]
         path: PathBuf,
     },
 
-    /// Search the index (semantic + full-text)
     Search {
-        /// Search query (natural language)
         query: String,
-
-        /// Path to the project directory
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
-
-        /// Maximum number of results
         #[arg(short = 'n', long, default_value = "10")]
         limit: usize,
-
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
 
-    /// Show index statistics
     Stats {
-        /// Path to the project directory
         #[arg(default_value = ".")]
         path: PathBuf,
     },
 
-    /// Show the call graph for a symbol
     Calls {
-        /// Symbol name
+        /// symbol name
         name: String,
 
-        /// Path to the project directory
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
 
-        /// Max depth of the call graph
         #[arg(short, long, default_value = "3")]
         depth: usize,
 
-        /// Show callers instead of callees
         #[arg(long)]
         callers: bool,
 
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
 
-    /// Start the visualization web server
     Serve {
-        /// Path to the project directory
         #[arg(default_value = ".")]
         path: PathBuf,
 
-        /// Port to serve on
         #[arg(short = 'P', long, default_value = "7777")]
         port: u16,
     },
 
-    /// List symbols in a specific file
     Symbols {
-        /// File path (relative to project root)
         file: String,
-
-        /// Path to the project directory
         #[arg(short, long, default_value = ".")]
         path: PathBuf,
 
-        /// Output as JSON
         #[arg(long)]
         json: bool,
     },
@@ -111,8 +85,7 @@ enum Commands {
 fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt()
         .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive("plex=info".parse()?),
+            tracing_subscriber::EnvFilter::from_default_env().add_directive("plex=info".parse()?),
         )
         .with_writer(std::io::stderr)
         .init();
@@ -122,10 +95,7 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Commands::Index { path, no_embed } => {
             let config = plex::config::Config::new(path)?;
-            eprintln!(
-                "⚡ Plex — indexing '{}'",
-                config.project_name()
-            );
+            eprintln!("⚡ Plex — indexing '{}'", config.project_name());
             let mut indexer = plex::indexer::Indexer::new(&config)?;
             indexer.index_project(!no_embed)?;
         }
@@ -179,10 +149,7 @@ fn main() -> anyhow::Result<()> {
                         result.symbol.qualified_name,
                         result.symbol.kind.as_str(),
                     );
-                    println!(
-                        "   {}:{}",
-                        result.file_path, result.symbol.start_line
-                    );
+                    println!("   {}:{}", result.file_path, result.symbol.start_line);
                     if let Some(ref sig) = result.symbol.signature {
                         println!("   {}", sig);
                     }
@@ -203,10 +170,7 @@ fn main() -> anyhow::Result<()> {
             println!("Symbols:    {}", stats.symbol_count);
             println!("Relations:  {}", stats.relation_count);
             println!("Embeddings: {}", stats.embedding_count);
-            println!(
-                "Languages:  {}",
-                stats.languages.join(", ")
-            );
+            println!("Languages:  {}", stats.languages.join(", "));
         }
 
         Commands::Calls {
@@ -287,11 +251,7 @@ fn main() -> anyhow::Result<()> {
                 }
 
                 println!();
-                println!(
-                    "{} nodes, {} edges",
-                    graph.nodes.len(),
-                    graph.edges.len()
-                );
+                println!("{} nodes, {} edges", graph.nodes.len(), graph.edges.len());
             }
         }
 

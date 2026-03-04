@@ -4,7 +4,6 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use crate::store::Store;
 use crate::types::*;
 
-/// Graph analysis engine for call chains, inheritance, and dependencies.
 pub struct GraphAnalyzer<'a> {
     store: &'a Store,
 }
@@ -14,8 +13,6 @@ impl<'a> GraphAnalyzer<'a> {
         GraphAnalyzer { store }
     }
 
-    /// Get the call graph rooted at a symbol, up to `max_depth` levels.
-    /// Direction: who does this symbol call (callees)?
     pub fn get_call_graph(&self, symbol_name: &str, max_depth: usize) -> Result<CallGraph> {
         let symbols = self.store.find_symbols_by_name(symbol_name)?;
         let root_sym = symbols
@@ -66,7 +63,6 @@ impl<'a> GraphAnalyzer<'a> {
         })
     }
 
-    /// Get all callers of a symbol (reverse call graph).
     pub fn get_callers(&self, symbol_name: &str, max_depth: usize) -> Result<CallGraph> {
         let symbols = self.store.find_symbols_by_name(symbol_name)?;
         let root_sym = symbols
@@ -117,7 +113,6 @@ impl<'a> GraphAnalyzer<'a> {
         })
     }
 
-    /// Get the inheritance tree for a class / trait / interface.
     pub fn get_inheritance_tree(&self, class_name: &str) -> Result<CallGraph> {
         let symbols = self.store.find_symbols_by_name(class_name)?;
         let root_sym = symbols
@@ -131,7 +126,6 @@ impl<'a> GraphAnalyzer<'a> {
         let mut visited = HashSet::new();
         visited.insert(root_sym.id);
 
-        // Find subclasses (who inherits/implements this?)
         let inheritance_rels = self
             .store
             .get_relations_by_kind(RelationKind::Inherits)?;
@@ -143,7 +137,6 @@ impl<'a> GraphAnalyzer<'a> {
             .iter()
             .chain(implements_rels.iter())
         {
-            // Check if this relation targets our class
             let targets_us = rel.target_symbol_name == class_name
                 || rel.target_symbol_id == Some(root_sym.id);
 
@@ -163,7 +156,6 @@ impl<'a> GraphAnalyzer<'a> {
             }
         }
 
-        // Find superclasses (what does this class inherit from?)
         let outgoing = self.store.get_outgoing_relations(root_sym.id)?;
         for rel in &outgoing {
             if rel.kind == RelationKind::Inherits || rel.kind == RelationKind::Implements {
@@ -190,12 +182,10 @@ impl<'a> GraphAnalyzer<'a> {
         })
     }
 
-    /// Get a project-level overview: counts per kind, top-level structure.
     pub fn get_project_structure(&self) -> Result<ProjectStructure> {
         let files = self.store.list_files()?;
         let stats = self.store.get_stats()?;
 
-        // Group files by directory
         let mut dir_map: HashMap<String, Vec<String>> = HashMap::new();
         for f in &files {
             let dir = std::path::Path::new(&f.relative_path)
@@ -212,7 +202,6 @@ impl<'a> GraphAnalyzer<'a> {
                 .push(f.relative_path.clone());
         }
 
-        // Count symbols by kind
         let mut kind_counts: HashMap<String, usize> = HashMap::new();
         for kind_str in &[
             "function", "method", "class", "struct", "interface", "trait", "enum",
@@ -224,7 +213,6 @@ impl<'a> GraphAnalyzer<'a> {
             }
         }
 
-        // Language distribution
         let mut lang_counts: HashMap<String, usize> = HashMap::new();
         for f in &files {
             *lang_counts
@@ -240,7 +228,6 @@ impl<'a> GraphAnalyzer<'a> {
         })
     }
 
-    /// Find all implementations of an interface / trait.
     pub fn find_implementations(&self, name: &str) -> Result<Vec<GraphNode>> {
         let implements = self
             .store
@@ -283,3 +270,4 @@ pub struct ProjectStructure {
     pub symbol_kinds: HashMap<String, usize>,
     pub languages: HashMap<String, usize>,
 }
+

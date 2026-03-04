@@ -93,7 +93,6 @@ pub struct Store {
 }
 
 impl Store {
-    /// Open (or create) the database at `db_path`.
     pub fn open(db_path: &Path) -> Result<Self> {
         let conn = Connection::open(db_path)
             .with_context(|| format!("Failed to open database at {}", db_path.display()))?;
@@ -108,7 +107,6 @@ impl Store {
         Ok(())
     }
 
-    /// Insert or update a source file. Returns the file id.
     pub fn upsert_file(&self, file: &SourceFile) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO files (path, relative_path, language, content_hash, size_bytes, last_indexed)
@@ -129,7 +127,6 @@ impl Store {
         Ok(self.conn.last_insert_rowid())
     }
 
-    /// Lookup a file by its absolute path.
     pub fn get_file_by_path(&self, path: &str) -> Result<Option<SourceFile>> {
         self.conn
             .query_row(
@@ -152,14 +149,12 @@ impl Store {
             .map_err(Into::into)
     }
 
-    /// Delete a file and cascade to its symbols / relations.
     pub fn delete_file(&self, file_id: i64) -> Result<()> {
         self.conn
             .execute("DELETE FROM files WHERE id = ?1", params![file_id])?;
         Ok(())
     }
 
-    /// List all indexed file paths.
     pub fn list_files(&self) -> Result<Vec<SourceFile>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, path, relative_path, language, content_hash, size_bytes, last_indexed
@@ -179,9 +174,7 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Replace all symbols for a file. Returns the new database IDs in order.
     pub fn replace_symbols(&self, file_id: i64, symbols: &[ParsedSymbol]) -> Result<Vec<i64>> {
-        // Delete old symbols (cascades to relations & embeddings)
         self.conn
             .execute("DELETE FROM symbols WHERE file_id = ?1", params![file_id])?;
 
@@ -213,7 +206,6 @@ impl Store {
         Ok(ids)
     }
 
-    /// Get a single symbol by id.
     pub fn get_symbol(&self, id: i64) -> Result<Option<Symbol>> {
         self.conn
             .query_row(
@@ -227,7 +219,6 @@ impl Store {
             .map_err(Into::into)
     }
 
-    /// Find symbols whose name matches a pattern (SQL LIKE).
     pub fn find_symbols_by_name(&self, pattern: &str) -> Result<Vec<Symbol>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,file_id,name,qualified_name,kind,start_line,end_line,
@@ -238,7 +229,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get all symbols in a file.
     pub fn get_file_symbols(&self, file_id: i64) -> Result<Vec<Symbol>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,file_id,name,qualified_name,kind,start_line,end_line,
@@ -249,7 +239,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get all symbols of a particular kind.
     pub fn get_symbols_by_kind(&self, kind: SymbolKind) -> Result<Vec<Symbol>> {
         let mut stmt = self.conn.prepare(
             "SELECT id,file_id,name,qualified_name,kind,start_line,end_line,
@@ -278,7 +267,6 @@ impl Store {
         })
     }
 
-    /// Replace all relations originating from symbols in a file.
     pub fn replace_relations(
         &self,
         file_id: i64,
@@ -316,7 +304,6 @@ impl Store {
         Ok(())
     }
 
-    /// Resolve target_symbol_id for unresolved relations (match by name).
     pub fn resolve_relations(&self) -> Result<usize> {
         let updated = self.conn.execute(
             "UPDATE relations SET target_symbol_id = (
@@ -328,7 +315,6 @@ impl Store {
         Ok(updated)
     }
 
-    /// Get all relations where source matches a symbol id.
     pub fn get_outgoing_relations(&self, symbol_id: i64) -> Result<Vec<Relation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, source_symbol_id, target_symbol_name, target_symbol_id, kind, file_id, line
@@ -338,7 +324,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get all relations where target matches a symbol id.
     pub fn get_incoming_relations(&self, symbol_id: i64) -> Result<Vec<Relation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, source_symbol_id, target_symbol_name, target_symbol_id, kind, file_id, line
@@ -348,7 +333,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get all relations of a specific kind.
     pub fn get_relations_by_kind(&self, kind: RelationKind) -> Result<Vec<Relation>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, source_symbol_id, target_symbol_name, target_symbol_id, kind, file_id, line
@@ -370,7 +354,6 @@ impl Store {
         })
     }
 
-    /// Store an embedding vector for a symbol.
     pub fn store_embedding(&self, symbol_id: i64, vector: &[f32]) -> Result<()> {
         let blob = vector_to_blob(vector);
         self.conn.execute(
@@ -380,8 +363,6 @@ impl Store {
         Ok(())
     }
 
-    /// Load all embeddings into memory for brute-force search.
-    /// Returns (symbol_id, vector) pairs.
     pub fn load_all_embeddings(&self) -> Result<Vec<(i64, Vec<f32>)>> {
         let mut stmt = self
             .conn
@@ -394,7 +375,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Count of embedded symbols.
     pub fn embedding_count(&self) -> Result<usize> {
         let count: i64 = self
             .conn
@@ -402,7 +382,6 @@ impl Store {
         Ok(count as usize)
     }
 
-    /// Get symbol IDs that don't have embeddings yet.
     pub fn get_unembedded_symbol_ids(&self) -> Result<Vec<i64>> {
         let mut stmt = self.conn.prepare(
             "SELECT s.id FROM symbols s
@@ -414,7 +393,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Full-text search using FTS5. Returns (symbol_id, rank).
     pub fn fts_search(&self, query: &str, limit: usize) -> Result<Vec<(i64, f64)>> {
         let mut stmt = self.conn.prepare(
             "SELECT rowid, rank FROM symbols_fts WHERE symbols_fts MATCH ?1
@@ -466,7 +444,6 @@ impl Store {
         Ok(())
     }
 
-    /// Get the file path for a given file id.
     pub fn get_file_path(&self, file_id: i64) -> Result<Option<String>> {
         self.conn
             .query_row(
@@ -478,9 +455,7 @@ impl Store {
             .map_err(Into::into)
     }
 
-    /// Full-text search on symbol names using FTS5.
     pub fn text_search(&self, query: &str, limit: usize) -> Result<Vec<Symbol>> {
-        // Use FTS5 MATCH for fast text search
         let fts_query = format!("{}*", query.replace('"', ""));
         let mut stmt = self.conn.prepare(
             "SELECT s.id,s.file_id,s.name,s.qualified_name,s.kind,s.start_line,s.end_line,
@@ -494,7 +469,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get all symbols in a file by relative path.
     pub fn get_file_symbols_by_path(&self, path: &str) -> Result<Vec<Symbol>> {
         let file_id: Option<i64> = self.conn
             .query_row(
@@ -510,8 +484,6 @@ impl Store {
         }
     }
 
-    /// Get file-level dependency edges: returns (source_file_path, target_file_path) pairs.
-    /// A dependency means a symbol in source_file references/calls/imports a symbol in target_file.
     pub fn get_file_dependencies(&self) -> Result<Vec<(String, String, String)>> {
         let mut stmt = self.conn.prepare(
             "SELECT DISTINCT
@@ -537,7 +509,6 @@ impl Store {
         rows.collect::<Result<Vec<_>, _>>().map_err(Into::into)
     }
 
-    /// Get per-file symbol counts grouped by kind.
     pub fn get_file_symbol_counts(&self) -> Result<Vec<(String, String, usize)>> {
         let mut stmt = self.conn.prepare(
             "SELECT f.relative_path, s.kind, COUNT(*) as cnt
@@ -570,3 +541,4 @@ fn blob_to_vector(blob: &[u8]) -> Vec<f32> {
         .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
         .collect()
 }
+

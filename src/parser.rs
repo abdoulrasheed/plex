@@ -2,8 +2,6 @@ use crate::types::*;
 use anyhow::{Context, Result};
 use tree_sitter::{Node, Parser};
 
-/// Multi-language Tree-sitter parser.
-/// Extracts symbols (functions, classes, etc.) and relations (calls, imports, inheritance).
 pub struct CodeParser {
     parser: Parser,
 }
@@ -15,7 +13,6 @@ impl CodeParser {
         }
     }
 
-    /// Parse a source file and extract symbols + relations.
     pub fn parse_file(
         &mut self,
         source: &str,
@@ -67,7 +64,6 @@ impl CodeParser {
         Ok(ParseResult { symbols, relations })
     }
 
-    /// Recursive AST walk. Dispatches to language-specific extractors.
     fn walk_node(
         &self,
         node: Node,
@@ -80,7 +76,6 @@ impl CodeParser {
     ) {
         let kind = node.kind();
 
-        // Try to extract a symbol from this node
         let new_parent = match lang {
             Language::Python => self.extract_python(node, source, file_path, parent_idx, symbols, relations),
             Language::JavaScript | Language::TypeScript => {
@@ -94,7 +89,6 @@ impl CodeParser {
             Language::Unknown => None,
         };
 
-        // For call expressions, extract across all languages
         if matches!(kind, "call" | "call_expression" | "method_invocation") {
             if let Some(caller_idx) = parent_idx.or(new_parent) {
                 if let Some(callee) = self.extract_call_target(node, source, lang) {
@@ -108,7 +102,6 @@ impl CodeParser {
             }
         }
 
-        // Recurse into children
         let effective_parent = new_parent.or(parent_idx);
         let mut cursor = node.walk();
         if cursor.goto_first_child() {
@@ -172,7 +165,6 @@ impl CodeParser {
                 let doc = self.python_docstring(node, source);
                 let qualified = make_qualified(file_path, None, &name);
 
-                // Inheritance
                 if let Some(args) = node.child_by_field_name("superclasses") {
                     let mut cursor = args.walk();
                     if cursor.goto_first_child() {
@@ -257,7 +249,6 @@ impl CodeParser {
             let string_node = first.child(0)?;
             if string_node.kind() == "string" || string_node.kind() == "concatenated_string" {
                 let text = string_node.utf8_text(source).ok()?;
-                // Strip quotes
                 let trimmed = text
                     .trim_start_matches("\"\"\"")
                     .trim_start_matches("'''")
@@ -306,7 +297,6 @@ impl CodeParser {
                 let name = child_text(node, "name", source)?;
                 let qualified = make_qualified(file_path, None, &name);
 
-                // Check for extends / implements
                 if let Some(heritage) = node.child_by_field_name("heritage") {
                     if let Ok(text) = heritage.utf8_text(source) {
                         for base in text.split(',') {
@@ -365,7 +355,6 @@ impl CodeParser {
                 Some(idx)
             }
             "variable_declarator" => {
-                // Arrow functions assigned to variables: const foo = () => {}
                 let value = node.child_by_field_name("value")?;
                 if value.kind() != "arrow_function" {
                     return None;
@@ -564,7 +553,6 @@ impl CodeParser {
                     .and_then(|n| n.utf8_text(source).ok())
                     .unwrap_or("Unknown");
 
-                // Check for trait implementation: impl Trait for Type
                 if let Some(trait_node) = node.child_by_field_name("trait") {
                     if let Ok(trait_name) = trait_node.utf8_text(source) {
                         relations.push(ParsedRelation {
@@ -618,7 +606,6 @@ impl CodeParser {
     }
 
     fn rust_fn_signature(&self, node: Node, source: &[u8]) -> Option<String> {
-        // Grab everything from fn name up to the opening brace
         let text = node.utf8_text(source).ok()?;
         let sig = text.split('{').next()?.trim();
         Some(sig.to_string())
@@ -683,7 +670,6 @@ impl CodeParser {
                 Some(idx)
             }
             "type_declaration" => {
-                // type Foo struct { ... } or type Foo interface { ... }
                 let mut cursor = node.walk();
                 if cursor.goto_first_child() {
                     loop {
@@ -789,7 +775,6 @@ impl CodeParser {
                 let name = child_text(node, "name", source)?;
                 let qualified = make_qualified(file_path, None, &name);
 
-                // Superclass
                 if let Some(super_node) = node.child_by_field_name("superclass") {
                     if let Ok(base) = super_node.utf8_text(source) {
                         relations.push(ParsedRelation {
@@ -800,7 +785,6 @@ impl CodeParser {
                         });
                     }
                 }
-                // Interfaces
                 if let Some(ifaces) = node.child_by_field_name("interfaces") {
                     let mut cursor = ifaces.walk();
                     if cursor.goto_first_child() {
@@ -919,7 +903,6 @@ impl CodeParser {
                 Some(idx)
             }
             "declaration" => {
-                // Forward declarations, function prototypes, variable declarations
                 let declarator = node.child_by_field_name("declarator");
                 if let Some(decl) = declarator {
                     if decl.kind() == "function_declarator" {
@@ -986,7 +969,6 @@ impl CodeParser {
                 Some(idx)
             }
             "type_definition" => {
-                // typedef struct { ... } Name;
                 let declarator = node.child_by_field_name("declarator");
                 if let Some(decl) = declarator {
                     let name = decl.utf8_text(source).ok()?.to_string();
@@ -1011,7 +993,6 @@ impl CodeParser {
                 None
             }
             "preproc_def" | "preproc_function_def" => {
-                // #define macros
                 let name = child_text(node, "name", source)?;
                 let qualified = make_qualified(file_path, None, &name);
                 let kind = if node.kind() == "preproc_function_def" {
@@ -1060,7 +1041,6 @@ impl CodeParser {
         }
     }
 
-    /// Extract function name from C declarator (handles pointer declarators, etc.)
     fn c_declarator_name(&self, node: Node, source: &[u8]) -> Option<String> {
         match node.kind() {
             "function_declarator" => {
@@ -1072,7 +1052,6 @@ impl CodeParser {
                 self.c_declarator_name(inner, source)
             }
             "parenthesized_declarator" => {
-                // Walk children to find the actual declarator
                 let mut cursor = node.walk();
                 if cursor.goto_first_child() {
                     loop {
@@ -1134,7 +1113,6 @@ impl CodeParser {
                 let name = child_text(node, "name", source)?;
                 let qualified = make_qualified(file_path, None, &name);
 
-                // Base classes
                 if let Some(bases) = node.child_by_field_name("base_class_clause") {
                     let mut cursor = bases.walk();
                     if cursor.goto_first_child() {
@@ -1235,8 +1213,6 @@ impl CodeParser {
                 Some(idx)
             }
             "template_declaration" => {
-                // Recurse into the templated entity (class, function, etc.)
-                // Return None here and let walk_node recurse into children
                 None
             }
             "type_definition" => {
@@ -1315,7 +1291,6 @@ impl CodeParser {
     fn extract_call_target(&self, node: Node, source: &[u8], lang: Language) -> Option<String> {
         match lang {
             Language::Python => {
-                // call: function is either identifier or attribute.attribute
                 let func = node.child_by_field_name("function")?;
                 match func.kind() {
                     "identifier" => func.utf8_text(source).ok().map(|s| s.to_string()),
@@ -1364,7 +1339,6 @@ impl CodeParser {
                 }
             }
             Language::Java => {
-                // method_invocation
                 let name = node.child_by_field_name("name")?;
                 name.utf8_text(source).ok().map(|s| s.to_string())
             }
@@ -1403,13 +1377,11 @@ impl CodeParser {
     }
 }
 
-/// Get the text content of a named child field.
 fn child_text(node: Node, field: &str, source: &[u8]) -> Option<String> {
     let child = node.child_by_field_name(field)?;
     child.utf8_text(source).ok().map(|s| s.to_string())
 }
 
-/// Build a qualified name like "path/file.py::ClassName.method_name".
 fn make_qualified(file_path: &str, parent_name: Option<&str>, name: &str) -> String {
     match parent_name {
         Some(parent) => format!("{}::{}::{}", file_path, parent, name),
@@ -1417,7 +1389,6 @@ fn make_qualified(file_path: &str, parent_name: Option<&str>, name: &str) -> Str
     }
 }
 
-/// Extract the first N lines of a node's body as a snippet.
 fn body_snippet(node: Node, source: &[u8], max_lines: usize) -> Option<String> {
     let text = node.utf8_text(source).ok()?;
     let lines: Vec<&str> = text.lines().collect();
@@ -1438,13 +1409,11 @@ fn body_snippet(node: Node, source: &[u8], max_lines: usize) -> Option<String> {
     }
 }
 
-/// Look for a comment node immediately preceding the given node (same line or previous line).
 fn preceding_comment(node: Node, source: &[u8]) -> Option<String> {
     let prev = node.prev_sibling()?;
     if prev.kind() != "comment" && !prev.kind().contains("comment") {
         return None;
     }
-    // Only use if it ends on the line immediately before the node
     if prev.end_position().row + 1 >= node.start_position().row {
         let text = prev.utf8_text(source).ok()?;
         Some(
@@ -1460,7 +1429,6 @@ fn preceding_comment(node: Node, source: &[u8]) -> Option<String> {
     }
 }
 
-/// Look for Rust-style doc comments (/// or //!) preceding a node.
 fn preceding_doc_comment(node: Node, source: &[u8]) -> Option<String> {
     let mut comments = Vec::new();
     let mut current = node.prev_sibling();
@@ -1490,3 +1458,4 @@ fn preceding_doc_comment(node: Node, source: &[u8]) -> Option<String> {
         Some(comments.join("\n"))
     }
 }
+

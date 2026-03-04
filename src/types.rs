@@ -57,7 +57,6 @@ impl Language {
         }
     }
 
-    /// Returns true if this language is supported for parsing.
     pub fn is_supported(&self) -> bool {
         !matches!(self, Language::Unknown)
     }
@@ -233,14 +232,12 @@ pub struct CallGraph {
     pub edges: Vec<GraphEdge>,
 }
 
-/// Result of parsing a single file – not yet persisted.
 #[derive(Debug, Clone)]
 pub struct ParseResult {
     pub symbols: Vec<ParsedSymbol>,
     pub relations: Vec<ParsedRelation>,
 }
 
-/// A symbol extracted from parsing, before it gets a database ID.
 #[derive(Debug, Clone)]
 pub struct ParsedSymbol {
     pub name: String,
@@ -256,7 +253,6 @@ pub struct ParsedSymbol {
     pub parent_index: Option<usize>,
 }
 
-/// A relation extracted from parsing, before symbol IDs are resolved.
 #[derive(Debug, Clone)]
 pub struct ParsedRelation {
     pub source_symbol_index: usize,
@@ -265,7 +261,6 @@ pub struct ParsedRelation {
     pub line: u32,
 }
 
-/// Project-level statistics.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndexStats {
     pub file_count: usize,

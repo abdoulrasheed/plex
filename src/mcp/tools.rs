@@ -6,7 +6,6 @@ use crate::search::Searcher;
 use crate::store::Store;
 use crate::types::*;
 
-/// Return the MCP tool definitions (JSON schema for each tool).
 pub fn tool_definitions() -> Vec<Value> {
     vec![
         json!({
@@ -147,7 +146,6 @@ pub fn tool_definitions() -> Vec<Value> {
     ]
 }
 
-/// Execute an MCP tool and return the result as a string.
 pub fn execute_tool(
     name: &str,
     args: &Value,
@@ -223,7 +221,6 @@ fn tool_get_symbol(args: &Value, store: &Store) -> Result<String> {
     let symbols = store.find_symbols_by_name(&pattern)?;
 
     if symbols.is_empty() {
-        // Try with wildcards
         let symbols = store.find_symbols_by_name(&format!("%{}%", name))?;
         if symbols.is_empty() {
             return Ok(format!("No symbol found matching '{}'", name));
@@ -314,19 +311,16 @@ fn tool_get_inheritance(args: &Value, store: &Store) -> Result<String> {
 
     let mut output = format!("Inheritance hierarchy for '{}':\n\n", name);
 
-    // Separate parents and children
     let root_id = graph.root.symbol_id;
     let mut parents = Vec::new();
     let mut children = Vec::new();
 
     for edge in &graph.edges {
         if edge.source_id == root_id {
-            // root inherits from target (parent)
             if let Some(node) = graph.nodes.iter().find(|n| n.symbol_id == edge.target_id) {
                 parents.push(node);
             }
         } else {
-            // source inherits from root (child)
             if let Some(node) = graph.nodes.iter().find(|n| n.symbol_id == edge.source_id) {
                 children.push(node);
             }
@@ -403,7 +397,6 @@ fn tool_get_file_symbols(args: &Value, store: &Store) -> Result<String> {
         .and_then(|p| p.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing 'path' argument"))?;
 
-    // Find the file by relative path (substring match)
     let files = store.list_files()?;
     let matching_file = files
         .iter()
@@ -483,7 +476,6 @@ fn tool_get_references(args: &Value, store: &Store) -> Result<String> {
         .and_then(|n| n.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing 'name' argument"))?;
 
-    // Find the symbol first
     let symbols = store.find_symbols_by_name(name)?;
     if symbols.is_empty() {
         let symbols = store.find_symbols_by_name(&format!("%{}%", name))?;
@@ -576,3 +568,4 @@ fn format_symbols(symbols: &[Symbol], store: &Store) -> Result<String> {
 
     Ok(output)
 }
+

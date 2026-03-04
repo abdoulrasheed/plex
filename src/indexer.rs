@@ -11,8 +11,6 @@ use crate::parser::CodeParser;
 use crate::store::Store;
 use crate::types::*;
 
-/// Orchestrates the full indexing pipeline:
-/// scan files → parse → store symbols/relations → generate embeddings.
 pub struct Indexer {
     store: Store,
     parser: CodeParser,
@@ -32,11 +30,9 @@ impl Indexer {
         })
     }
 
-    /// Run the full indexing pipeline.
     pub fn index_project(&mut self, generate_embeddings: bool) -> Result<()> {
         let start = std::time::Instant::now();
 
-        // Phase 1: Discover files
         eprintln!("⠋ Scanning files...");
         let files = self.discover_files()?;
         eprintln!("  Found {} supported source files", files.len());
@@ -46,7 +42,6 @@ impl Indexer {
             return Ok(());
         }
 
-        // Phase 2: Parse files and store symbols
         eprintln!("⠋ Parsing and indexing...");
         let pb = make_progress_bar(files.len() as u64, "Parsing");
         let mut total_symbols = 0usize;
@@ -69,7 +64,6 @@ impl Indexer {
                 .unwrap()
                 .as_secs() as i64;
 
-            // Check if file is unchanged
             if let Ok(Some(existing)) = self.store.get_file_by_path(path) {
                 if existing.content_hash == hash {
                     pb.inc(1);
@@ -89,14 +83,11 @@ impl Indexer {
 
             let file_id = self.store.upsert_file(&file)?;
 
-            // Parse the file
             let parse_result = self.parser.parse_file(&source, *lang, rel_path)?;
 
-            // Store symbols
             let symbol_ids = self.store.replace_symbols(file_id, &parse_result.symbols)?;
             total_symbols += symbol_ids.len();
 
-            // Store relations
             self.store
                 .replace_relations(file_id, &parse_result.relations, &symbol_ids)?;
             total_relations += parse_result.relations.len();
@@ -106,7 +97,6 @@ impl Indexer {
 
         pb.finish_and_clear();
 
-        // Phase 3: Resolve cross-file relations
         let resolved = self.store.resolve_relations()?;
         self.store.commit()?;
 
@@ -115,7 +105,6 @@ impl Indexer {
             total_symbols, total_relations, resolved
         );
 
-        // Phase 4: Generate embeddings (optional)
         if generate_embeddings {
             self.generate_embeddings()?;
         }
@@ -132,7 +121,6 @@ impl Indexer {
         Ok(())
     }
 
-    /// Discover all supported source files in the project.
     fn discover_files(&self) -> Result<Vec<(String, String, Language)>> {
         let root = Path::new(&self.project_root);
         let mut files = Vec::new();
@@ -144,7 +132,6 @@ impl Indexer {
             .git_global(true)
             .git_exclude(true)
             .filter_entry(|e| {
-                // Additional hardcoded ignores beyond .gitignore
                 if e.file_type().map_or(false, |ft| ft.is_dir()) {
                     return !Config::should_ignore(e.path());
                 }
@@ -182,8 +169,6 @@ impl Indexer {
         Ok(files)
     }
 
-    /// Generate embeddings for all symbols that don't have one yet.
-    /// Uses batched ONNX inference with length-sorted batches for speed.
     fn generate_embeddings(&self) -> Result<()> {
         const BATCH_SIZE: usize = 256;
 
@@ -199,9 +184,6 @@ impl Indexer {
         );
         let mut embedder = Embedder::load()?;
 
-        // Pre-collect symbol texts. Only embed semantically meaningful
-        // symbol kinds (functions, methods, classes). Imports, variables,
-        // and assignments are handled perfectly by FTS5 text search.
         let mut all_items: Vec<(i64, String)> = Vec::with_capacity(unembedded.len());
         let skip_kinds = ["import", "variable", "assignment", "constant"];
         let mut skipped = 0usize;
@@ -224,7 +206,6 @@ impl Indexer {
         if skipped > 0 {
             eprintln!("  Skipping {} trivial symbols (imports/vars) — text search covers them", skipped);
         }
-        // Sort by text length so similar-length texts batch together
         all_items.sort_by_key(|(_, text)| text.len());
 
         let pb = make_progress_bar(all_items.len() as u64, "Embedding");
@@ -240,7 +221,6 @@ impl Indexer {
                 continue;
             }
 
-            // Run batched inference
             match embedder.embed_batch(&batch_texts) {
                 Ok(vectors) => {
                     for (id, vector) in batch_ids.iter().zip(vectors.iter()) {
@@ -248,7 +228,6 @@ impl Indexer {
                     }
                 }
                 Err(e) => {
-                    // Fall back to one-at-a-time for this batch
                     tracing::warn!("Batch embed failed, falling back: {}", e);
                     for (id, text) in batch_ids.iter().zip(batch_texts.iter()) {
                         match embedder.embed(text) {
@@ -293,3 +272,4 @@ fn make_progress_bar(total: u64, msg: &str) -> ProgressBar {
     );
     pb
 }
+
