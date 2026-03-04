@@ -4,17 +4,17 @@ Local code intelligence engine. Single Rust binary that indexes a codebase into 
 
 No API keys. No cloud. Nothing leaves your machine.
 
-<p align="center">
-  <img src="static/min_weight_2_dependencies_grouped_by_module_picture_of_plex_cpython_code_base.png" width="85%" alt="Module dependencies" />
-</p>
-
 <table>
   <tr>
-    <td><img src="static/cpython_architecture_graph_screenshot.png" alt="Architecture sunburst" /></td>
-    <td><img src="static/code_map_by_module.png" alt="Code map" /></td>
+    <td><a href="static/min_weight_2_dependencies_grouped_by_module_picture_of_plex_cpython_code_base.png"><img src="static/min_weight_2_dependencies_grouped_by_module_picture_of_plex_cpython_code_base.png" alt="Module dependencies" /></a></td>
+    <td><a href="static/cpython_architecture_graph_screenshot.png"><img src="static/cpython_architecture_graph_screenshot.png" alt="Architecture sunburst" /></a></td>
+    <td><a href="static/min_weight_1_dependencies_by_module_picture_of_plex_cpython_code_base.png"><img src="static/min_weight_1_dependencies_by_module_picture_of_plex_cpython_code_base.png" alt="Dependency graph" /></a></td>
+    <td><a href="static/code_map_by_module.png"><img src="static/code_map_by_module.png" alt="Code map" /></a></td>
   </tr>
   <tr>
+    <td align="center"><sub>Module dependencies</sub></td>
     <td align="center"><sub>Architecture sunburst</sub></td>
+    <td align="center"><sub>Dependency graph</sub></td>
     <td align="center"><sub>Code map</sub></td>
   </tr>
 </table>
