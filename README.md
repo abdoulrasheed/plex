@@ -115,7 +115,7 @@ Python · JavaScript · TypeScript · Rust · Go · Java · C · C++
 
 ## Performance
 
-Benchmarked against CPython:
+Tested on CPython:
 
 | | |
 |---|---|
