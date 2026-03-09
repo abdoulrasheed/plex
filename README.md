@@ -101,11 +101,17 @@ plex speaks [Model Context Protocol](https://modelcontextprotocol.io/) over stdi
 
 ## VS Code extension
 
-A companion extension lives in `vscode-plex/`. Provides a symbol tree, search panel, call graph view, and a webview dashboard. Auto-indexes on save and generates MCP config on activation.
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/plex-code.vscode-plex?label=VS%20Code%20Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex)
+
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex) or search **"Plex — Code Intelligence"** in the Extensions panel.
+
+Provides a symbol tree, search panel, call graph view, and a webview dashboard. Auto-indexes on save and generates MCP config on activation.
+
+To build from source:
 
 ```bash
 cd vscode-plex && npm install && npm run compile
-npx @vscode/vsce package --allow-missing-repository
+npx @vscode/vsce package
 code --install-extension vscode-plex-0.1.0.vsix
 ```
 

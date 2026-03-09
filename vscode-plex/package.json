@@ -3,7 +3,13 @@
   "displayName": "Plex — Code Intelligence",
   "description": "Local-first code intelligence: semantic search, call graphs, symbol explorer. Powered by Plex.",
   "version": "0.1.0",
-  "publisher": "plex",
+  "publisher": "plex-code",
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/abdoulrasheed/plex"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.85.0"
   },
