@@ -124,7 +124,12 @@ impl Store {
                 file.last_indexed,
             ],
         )?;
-        Ok(self.conn.last_insert_rowid())
+        let id: i64 = self.conn.query_row(
+            "SELECT id FROM files WHERE path = ?1",
+            params![file.path],
+            |row| row.get(0),
+        )?;
+        Ok(id)
     }
 
     pub fn get_file_by_path(&self, path: &str) -> Result<Option<SourceFile>> {
