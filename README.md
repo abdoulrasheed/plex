@@ -1,6 +1,7 @@
 # plex
 
 [![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/plex-code.vscode-plex?label=VS%20Code%20Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex)
+[![Open VSX](https://img.shields.io/open-vsx/v/plex-code/vscode-plex?label=Open%20VSX%20%28Cursor%29&color=purple)](https://open-vsx.org/extension/plex-code/vscode-plex)
 
 Local code intelligence engine. Single Rust binary that indexes a codebase into a queryable knowledge graph (symbols, call chains, inheritance, cross-file references) with hybrid semantic and full-text search. Plugs into AI agents via MCP, ships with a VS Code extension and an interactive visualization server.
 
