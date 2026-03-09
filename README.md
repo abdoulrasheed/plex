@@ -1,5 +1,7 @@
 # plex
 
+[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/plex-code.vscode-plex?label=VS%20Code%20Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex)
+
 Local code intelligence engine. Single Rust binary that indexes a codebase into a queryable knowledge graph (symbols, call chains, inheritance, cross-file references) with hybrid semantic and full-text search. Plugs into AI agents via MCP, ships with a VS Code extension and an interactive visualization server.
 
 No API keys. No cloud. Nothing leaves your machine.
@@ -100,8 +102,6 @@ plex speaks [Model Context Protocol](https://modelcontextprotocol.io/) over stdi
 **Tools:** `search` · `get_symbol` · `get_callers` · `get_callees` · `get_inheritance` · `find_implementations` · `get_file_symbols` · `get_project_structure` · `get_references`
 
 ## VS Code extension
-
-[![VS Code Marketplace](https://img.shields.io/visual-studio-marketplace/v/plex-code.vscode-plex?label=VS%20Code%20Marketplace&color=blue)](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex)
 
 Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=plex-code.vscode-plex) or search **"Plex — Code Intelligence"** in the Extensions panel.
 

@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
+import * as path from 'path';
+import * as fs from 'fs';
 
 const execFileAsync = promisify(execFile);
 
@@ -28,10 +30,26 @@ export interface CallGraphNode {
  * All communication happens via subprocess calls — no sockets, no ports.
  */
 export class PlexBridge {
+    private extensionPath: string = '';
+
+    setExtensionPath(p: string) {
+        this.extensionPath = p;
+    }
+
     private getPlexPath(): string {
         const config = vscode.workspace.getConfiguration('plex');
         const custom = config.get<string>('binaryPath', '');
-        return custom || 'plex';
+        if (custom) { return custom; }
+
+        if (this.extensionPath) {
+            const name = process.platform === 'win32' ? 'plex.exe' : 'plex';
+            const bundled = path.join(this.extensionPath, 'bin', name);
+            if (fs.existsSync(bundled)) {
+                return bundled;
+            }
+        }
+
+        return 'plex';
     }
 
     public getPlexPathPublic(): string {
