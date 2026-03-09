@@ -16,7 +16,7 @@ jobs:
             target: aarch64-apple-darwin
             vsce_target: darwin-arm64
             archive_name: plex-darwin-arm64
-          - os: macos-13
+          - os: macos-14
             target: x86_64-apple-darwin
             vsce_target: darwin-x64
             archive_name: plex-darwin-x64
