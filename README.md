@@ -25,12 +25,29 @@ No API keys. No cloud. Nothing leaves your machine.
 
 ## Install
 
+**Homebrew** (macOS / Linux):
+```bash
+brew install abdoulrasheed/tap/plex
+```
+
+**Download binary** from [GitHub Releases](https://github.com/abdoulrasheed/plex/releases):
+```bash
+# macOS (Apple Silicon)
+curl -L https://github.com/abdoulrasheed/plex/releases/latest/download/plex-darwin-arm64.tar.gz | tar xz
+sudo mv plex /usr/local/bin/
+
+# Linux (x64)
+curl -L https://github.com/abdoulrasheed/plex/releases/latest/download/plex-linux-x64.tar.gz | tar xz
+sudo mv plex /usr/local/bin/
+```
+
+**Build from source** (requires Rust 1.70+):
 ```bash
 cargo build --release
 ln -sf "$(pwd)/target/release/plex" /usr/local/bin/plex
 ```
 
-Requires Rust 1.70+. The embedding model (~22 MB, quantized) is fetched on first run.
+The embedding model (~22 MB, quantized) is fetched on first run.
 
 ## Usage
 

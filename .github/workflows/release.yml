@@ -1,4 +1,4 @@
-name: Release Extension
+name: Release
 
 on:
   push:
@@ -15,18 +15,23 @@ jobs:
           - os: macos-14
             target: aarch64-apple-darwin
             vsce_target: darwin-arm64
+            archive_name: plex-darwin-arm64
           - os: macos-13
             target: x86_64-apple-darwin
             vsce_target: darwin-x64
+            archive_name: plex-darwin-x64
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             vsce_target: linux-x64
+            archive_name: plex-linux-x64
           - os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             vsce_target: linux-arm64
+            archive_name: plex-linux-arm64
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             vsce_target: win32-x64
+            archive_name: plex-win32-x64
 
     runs-on: ${{ matrix.os }}
 
@@ -49,6 +54,29 @@ jobs:
 
       - name: Build plex binary
         run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create tarball (unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp target/${{ matrix.target }}/release/plex staging/
+          chmod +x staging/plex
+          tar czf ${{ matrix.archive_name }}.tar.gz -C staging plex
+
+      - name: Create zip (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging
+          Copy-Item target/${{ matrix.target }}/release/plex.exe staging/
+          Compress-Archive -Path staging/plex.exe -DestinationPath ${{ matrix.archive_name }}.zip
+
+      - name: Upload binary archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: binary-${{ matrix.archive_name }}
+          path: ${{ matrix.archive_name }}.*
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -85,11 +113,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
           pattern: vsix-*
           merge-multiple: true
           path: vsix
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          merge-multiple: true
+          path: binaries
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -108,5 +144,38 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: vsix/*.vsix
+          files: |
+            vsix/*.vsix
+            binaries/*
           generate_release_notes: true
+
+      - name: Update Homebrew formula
+        env:
+          TAP_TOKEN: ${{ secrets.TAP_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd binaries
+
+          declare -A SHAS
+          for f in *.tar.gz; do
+            SHAS["$f"]=$(sha256sum "$f" | cut -d' ' -f1)
+          done
+
+          cd ..
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/abdoulrasheed/homebrew-tap.git tap
+          
+          sed -e "s/version \".*\"/version \"${VERSION}\"/" \
+              -e "s|plex-darwin-arm64.tar.gz\"$|plex-darwin-arm64.tar.gz\"|" \
+              -e "/plex-darwin-arm64/{ n; s/sha256 \".*\"/sha256 \"${SHAS[plex-darwin-arm64.tar.gz]}\"/; }" \
+              -e "/plex-darwin-x64/{ n; s/sha256 \".*\"/sha256 \"${SHAS[plex-darwin-x64.tar.gz]}\"/; }" \
+              -e "/plex-linux-arm64/{ n; s/sha256 \".*\"/sha256 \"${SHAS[plex-linux-arm64.tar.gz]}\"/; }" \
+              -e "/plex-linux-x64/{ n; s/sha256 \".*\"/sha256 \"${SHAS[plex-linux-x64.tar.gz]}\"/; }" \
+              dist/homebrew/plex.rb > tap/Formula/plex.rb
+
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/plex.rb
+          git commit -m "plex ${VERSION}" || true
+          git push
+        continue-on-error: true
