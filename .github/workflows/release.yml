@@ -1,0 +1,112 @@
+name: Release Extension
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            vsce_target: darwin-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            vsce_target: darwin-x64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            vsce_target: linux-x64
+          - os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            vsce_target: linux-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            vsce_target: win32-x64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+          echo "CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++" >> $GITHUB_ENV
+
+      - name: Build plex binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install extension dependencies
+        working-directory: vscode-plex
+        run: npm ci
+
+      - name: Copy binary into extension
+        shell: bash
+        run: |
+          mkdir -p vscode-plex/bin
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cp target/${{ matrix.target }}/release/plex.exe vscode-plex/bin/plex.exe
+          else
+            cp target/${{ matrix.target }}/release/plex vscode-plex/bin/plex
+            chmod +x vscode-plex/bin/plex
+          fi
+
+      - name: Package platform-specific VSIX
+        working-directory: vscode-plex
+        run: npx @vscode/vsce package --target ${{ matrix.vsce_target }}
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-${{ matrix.vsce_target }}
+          path: vscode-plex/*.vsix
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: vsix-*
+          merge-multiple: true
+          path: vsix
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Publish to VS Code Marketplace
+        run: npx @vscode/vsce publish --packagePath vsix/*.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      - name: Publish to Open VSX (Cursor)
+        run: npx ovsx publish vsix/*.vsix -p ${{ secrets.OVSX_PAT }}
+        continue-on-error: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: vsix/*.vsix
+          generate_release_notes: true

@@ -18,6 +18,7 @@ const DASHBOARD_PORT = 7778;
 
 export function activate(context: vscode.ExtensionContext) {
     bridge = new PlexBridge();
+    bridge.setExtensionPath(context.extensionPath);
 
     symbolTree = new SymbolTreeProvider(bridge);
     searchResults = new SearchResultsProvider(bridge);

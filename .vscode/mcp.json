@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "plex": {
+      "type": "stdio",
+      "command": "plex",
+      "args": [
+        "mcp",
+        "."
+      ]
+    }
+  }
+}
